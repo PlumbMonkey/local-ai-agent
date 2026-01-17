@@ -107,6 +107,17 @@ class VectorStore:
             logger.error(f"Query failed: {e}")
             return []
 
+    def get_collection_size(self) -> int:
+        """Get number of documents in collection."""
+        try:
+            collection = self.client.get_or_create_collection(
+                name=self.collection_name
+            )
+            return collection.count()
+        except Exception as e:
+            logger.error(f"Failed to get collection size: {e}")
+            return 0
+
     def clear(self) -> None:
         """Clear all data from collection."""
         try:
