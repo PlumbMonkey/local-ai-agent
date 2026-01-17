@@ -1,0 +1,10 @@
+pydantic>=2.0
+pydantic-settings>=2.0
+requests>=2.31.0
+chromadb>=0.4.0
+llama-index>=0.12.0
+langraph>=0.3.0
+langchain>=0.1.0
+python-dotenv>=1.0.0
+pyyaml>=6.0
+typing-extensions>=4.8.0

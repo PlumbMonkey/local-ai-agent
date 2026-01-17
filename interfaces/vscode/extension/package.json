@@ -1,0 +1,62 @@
+"""VS Code extension package configuration."""
+
+{
+  "name": "local-ai-agent",
+  "displayName": "Local AI Agent",
+  "description": "Privacy-first AI agent for VS Code with GitHub Copilot integration",
+  "version": "0.1.0",
+  "publisher": "plumbmonkey",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "AI",
+    "Education",
+    "Debuggers"
+  ],
+  "keywords": [
+    "ai",
+    "copilot",
+    "ollama",
+    "mcp",
+    "privacy"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "localai.chat",
+        "title": "Local AI: Chat"
+      },
+      {
+        "command": "localai.explain",
+        "title": "Local AI: Explain Selection"
+      }
+    ],
+    "configuration": {
+      "title": "Local AI Agent",
+      "properties": {
+        "localai.ollamaEndpoint": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama API endpoint"
+        },
+        "localai.primaryModel": {
+          "type": "string",
+          "default": "qwen2.5-coder:7b",
+          "description": "Primary model for code generation"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.95.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-ai-agent"
+version = "0.1.0"
+description = "Privacy-first, self-hosted AI agent with VS Code + GitHub Copilot integration via MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "PlumbMonkey", email = "dev@plumbmonkey.local"}
+]
+keywords = ["ai", "agent", "mcp", "ollama", "vscode", "copilot"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "requests>=2.31.0",
+    "chromadb>=0.4.0",
+    "llama-index>=0.12.0",
+    "langraph>=0.3.0",
+    "langchain>=0.1.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0",
+    "typing-extensions>=4.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.3.0",
+    "ipython>=8.0.0",
+]
+
+web = [
+    "fastapi>=0.103.0",
+    "uvicorn>=0.23.0",
+    "websockets>=11.0",
+]
+
+browser = [
+    "browser-use>=0.1.0",
+    "playwright>=1.40.0",
+]
+
+music = [
+    "music21>=9.0.0",
+    "mido>=1.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/PlumbMonkey/local-ai-agent"
+Documentation = "https://github.com/PlumbMonkey/local-ai-agent/tree/main/docs"
+Repository = "https://github.com/PlumbMonkey/local-ai-agent.git"
+"Bug Tracker" = "https://github.com/PlumbMonkey/local-ai-agent/issues"
+
+[tool.setuptools]
+packages = ["core", "domains", "enterprise", "agents", "interfaces"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311', 'py312']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "W", "I", "B", "A", "UP"]
+ignore = ["E501"]  # Line too long (handled by black)
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+asyncio_mode = "auto"

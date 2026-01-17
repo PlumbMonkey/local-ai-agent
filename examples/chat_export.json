@@ -1,0 +1,48 @@
+"""Sample chat export JSON format."""
+
+{
+  "version": "1.0",
+  "export_date": "2026-01-17T00:00:00Z",
+  "conversations": [
+    {
+      "id": "conv_001",
+      "timestamp": "2025-12-01T14:30:00Z",
+      "duration_seconds": 600,
+      "participants": [
+        "PlumbMonkey",
+        "Copilot"
+      ],
+      "model": "gpt-4",
+      "topic": "python async programming",
+      "messages": [
+        {
+          "role": "user",
+          "content": "How do I handle async timeouts in Python?",
+          "timestamp": "2025-12-01T14:30:00Z"
+        },
+        {
+          "role": "assistant",
+          "content": "Use asyncio.wait_for() with a timeout parameter...",
+          "timestamp": "2025-12-01T14:30:15Z"
+        },
+        {
+          "role": "user",
+          "content": "Can you show an example?",
+          "timestamp": "2025-12-01T14:31:00Z"
+        },
+        {
+          "role": "assistant",
+          "content": "async def fetch_with_timeout():\n    try:\n        result = await asyncio.wait_for(\n            fetch_data(),\n            timeout=5.0\n        )\n    except asyncio.TimeoutError:\n        print('Request timed out')",
+          "timestamp": "2025-12-01T14:31:20Z"
+        }
+      ],
+      "tags": [
+        "python",
+        "async",
+        "timeout",
+        "asyncio"
+      ],
+      "resolved": true
+    }
+  ]
+}
