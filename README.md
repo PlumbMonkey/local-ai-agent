@@ -10,7 +10,23 @@
 - **Agentic Actions**: Execute multi-step tasks across IDE, terminal, browser, and local files
 - **Modular Architecture**: Free core + premium domains for specialized workflows
 
-## 🚀 Quick Start
+## � Project Status
+
+### Phase Progress
+- ✅ **Phase 1** (Complete): Core Ollama integration + MCP servers + CLI
+- 🔄 **Phase 2** (In Progress): Memory layer with semantic search
+  - ✅ Chat history ingestion (JSON/Markdown parsers)
+  - ✅ Domain-specific memory silos (coding, music, blender, study, general)
+  - ✅ Hybrid domain detection (keywords + LLM)
+  - ⏳ Performance testing (Days 3-4)
+  - ⏳ MCP memory server (Days 6-7)
+- 📋 **Phase 3** (Planned): Agentic workflows
+- 📋 **Phase 4** (Planned): Creative domains
+- 📋 **Phase 5** (Planned): Commercialization
+
+See [PHASE2_STATUS.md](docs/PHASE2_STATUS.md) for detailed progress.
+
+## �🚀 Quick Start
 
 ### Requirements
 - **OS**: Windows, macOS, or Linux
