@@ -148,7 +148,7 @@ Thanks! That sounds great.
         ingester = ChatHistoryIngester()
 
         text = "How to handle async/await in Python with timeouts?"
-        tags = ingester._auto_tag(text)
+        tags = ingester._auto_tag(text, domain="coding")
 
         assert isinstance(tags, list)
         assert len(tags) > 0
@@ -161,11 +161,13 @@ class TestDomainMemory:
         """Should add conversation to domain memory."""
         memory = DomainMemory(domain="coding")
 
-        memory.add_conversation(
-            id="test-1",
-            content="How to debug Python?",
-            tags=["python", "debugging"],
-        )
+        conversation = {
+            "id": "test-1",
+            "messages": [{"role": "user", "content": "How to debug Python?"}],
+            "tags": ["python", "debugging"],
+            "timestamp": "2024-01-01T10:00:00Z",
+        }
+        memory.add_conversation(conversation)
 
         assert memory.get_stats()["total_documents"] > 0
 
@@ -175,11 +177,13 @@ class TestDomainMemory:
 
         # Add some conversations
         for i in range(5):
-            memory.add_conversation(
-                id=f"test-{i}",
-                content="How to handle errors in Python?",
-                tags=["error-handling"],
-            )
+            conversation = {
+                "id": f"test-{i}",
+                "messages": [{"role": "user", "content": "How to handle errors in Python?"}],
+                "tags": ["error-handling"],
+                "timestamp": "2024-01-01T10:00:00Z",
+            }
+            memory.add_conversation(conversation)
 
         results = memory.query("error handling", top_k=3)
         assert len(results) > 0
@@ -188,11 +192,13 @@ class TestDomainMemory:
         """Should clear all conversations in domain."""
         memory = DomainMemory(domain="study")
 
-        memory.add_conversation(
-            id="test-1",
-            content="Quantum mechanics explained",
-            tags=["physics"],
-        )
+        conversation = {
+            "id": "test-1",
+            "messages": [{"role": "user", "content": "Quantum mechanics explained"}],
+            "tags": ["physics"],
+            "timestamp": "2024-01-01T10:00:00Z",
+        }
+        memory.add_conversation(conversation)
 
         assert memory.get_stats()["total_documents"] > 0
         memory.clear()
@@ -213,18 +219,20 @@ class TestCrossDomainQuery:
 
         # Add conversations to multiple domains
         coding_memory = DomainMemory(domain="coding")
-        coding_memory.add_conversation(
-            id="code-1",
-            content="Python async patterns",
-            tags=["async"],
-        )
+        coding_memory.add_conversation({
+            "id": "code-1",
+            "messages": [{"role": "user", "content": "Python async patterns"}],
+            "tags": ["async"],
+            "timestamp": "2024-01-01T10:00:00Z",
+        })
 
         music_memory = DomainMemory(domain="music")
-        music_memory.add_conversation(
-            id="music-1",
-            content="Jazz chord progressions",
-            tags=["jazz"],
-        )
+        music_memory.add_conversation({
+            "id": "music-1",
+            "messages": [{"role": "user", "content": "Jazz chord progressions"}],
+            "tags": ["jazz"],
+            "timestamp": "2024-01-01T10:00:00Z",
+        })
 
         results = cdq.query_all_domains("patterns")
         assert len(results) >= 0  # Might find nothing if databases are empty
@@ -232,7 +240,7 @@ class TestCrossDomainQuery:
     def test_fallback_search(self):
         """Should expand search if results < threshold."""
         cdq = CrossDomainQuery()
-        results = cdq.query("nonexistent query", domain="coding")
+        results = cdq.query("nonexistent query", primary_domain="coding")
         # Should not error even if no results
 
 
@@ -245,11 +253,12 @@ class TestAdvancedRAG:
 
         # Add some mock data to memory first
         memory = DomainMemory(domain="coding")
-        memory.add_conversation(
-            id="test-1",
-            content="Use list comprehension for cleaner code",
-            tags=["python"],
-        )
+        memory.add_conversation({
+            "id": "test-1",
+            "messages": [{"role": "user", "content": "Use list comprehension for cleaner code"}],
+            "tags": ["python"],
+            "timestamp": "2024-01-01T10:00:00Z",
+        })
 
         results = rag.query("Python best practices", domain="coding", top_k=3)
         # Should return properly formatted list
