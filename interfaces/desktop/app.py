@@ -150,8 +150,22 @@ class LocalAIAgentApp(ctk.CTk):
         
         # Window setup
         self.title("Gene")
-        self.geometry("2400x1500")  # Doubled size for better visibility
-        self.minsize(1600, 1000)
+        
+        # Get screen dimensions for responsive sizing
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        
+        # Start at 80% of screen size, capped at reasonable maximums
+        start_width = min(int(screen_width * 0.8), 1600)
+        start_height = min(int(screen_height * 0.8), 1000)
+        
+        # Center the window on screen
+        x_pos = (screen_width - start_width) // 2
+        y_pos = (screen_height - start_height) // 2
+        
+        self.geometry(f"{start_width}x{start_height}+{x_pos}+{y_pos}")
+        self.minsize(800, 600)  # Reasonable minimum for usability
+        self.resizable(True, True)  # Explicitly enable resizing
         
         # Ollama client
         self.client = OllamaClient()
@@ -388,20 +402,19 @@ class LocalAIAgentApp(ctk.CTk):
         # ─────────────────────────────────────────────────────────────────────
         content_frame = ctk.CTkFrame(self, fg_color="transparent")
         content_frame.grid(row=1, column=0, padx=20, pady=10, sticky="nsew")
-        content_frame.grid_columnconfigure(0, weight=0)  # History panel (left)
-        content_frame.grid_columnconfigure(1, weight=3)  # Chat gets more space
-        content_frame.grid_columnconfigure(2, weight=0)  # Thinking panel (right)
+        content_frame.grid_columnconfigure(0, weight=0)  # History panel (initially hidden)
+        content_frame.grid_columnconfigure(1, weight=1)  # Chat gets all space
+        content_frame.grid_columnconfigure(2, weight=0)  # Thinking panel (will be configured when shown)
         content_frame.grid_rowconfigure(0, weight=1)
         self.content_frame = content_frame  # Store reference
         
         # ─────────────────────────────────────────────────────────────────────
         # History Panel (Left side - collapsible)
         # ─────────────────────────────────────────────────────────────────────
-        self.history_frame = ctk.CTkFrame(content_frame, fg_color="#1a1a2e", corner_radius=10, width=250)
-        self.history_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        self.history_frame = ctk.CTkFrame(content_frame, fg_color="#1a1a2e", corner_radius=10)
+        self.history_frame.grid(row=0, column=0, sticky="nsew", padx=5)
         self.history_frame.grid_columnconfigure(0, weight=1)
         self.history_frame.grid_rowconfigure(1, weight=1)
-        self.history_frame.grid_propagate(False)  # Maintain fixed width
         
         # History header
         history_header = ctk.CTkFrame(self.history_frame, fg_color="transparent")
@@ -453,7 +466,7 @@ class LocalAIAgentApp(ctk.CTk):
             font=ctk.CTkFont(family="Arial", size=14, weight="bold"),
             state="disabled",
         )
-        self.chat_display.grid(row=0, column=1, sticky="nsew", padx=(0, 5))
+        self.chat_display.grid(row=0, column=1, sticky="nsew", padx=5)
         
         # Add right-click context menu to chat display
         self._setup_context_menu(self.chat_display)
@@ -469,7 +482,7 @@ class LocalAIAgentApp(ctk.CTk):
         # Thinking Panel (Right side - collapsible)
         # ─────────────────────────────────────────────────────────────────────
         self.thinking_frame = ctk.CTkFrame(content_frame, fg_color="#1a1a2e", corner_radius=10)
-        self.thinking_frame.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
+        self.thinking_frame.grid(row=0, column=2, sticky="nsew", padx=5)
         self.thinking_frame.grid_columnconfigure(0, weight=1)
         self.thinking_frame.grid_rowconfigure(1, weight=1)
         
@@ -507,17 +520,19 @@ class LocalAIAgentApp(ctk.CTk):
             fg_color="#16162a",
             text_color="#9ca3af",
             state="disabled",
-            width=300,
         )
         self.thinking_display.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
         
         # Add right-click context menu to thinking display
         self._setup_context_menu(self.thinking_display)
         
-        # Initially show thinking panel if enabled
-        if not self.thinking_visible:
+        # Configure thinking panel visibility
+        if self.thinking_visible:
+            # Thinking panel visible - give it fixed width
+            self.thinking_frame.configure(width=280)
+            self.thinking_frame.grid_propagate(False)
+        else:
             self.thinking_frame.grid_remove()
-            content_frame.grid_columnconfigure(2, weight=0, minsize=0)
         
         # Welcome message
         if SEARCH_AVAILABLE:
@@ -818,6 +833,8 @@ class LocalAIAgentApp(ctk.CTk):
                 fg_color="#1e40af",
                 hover_color="#2563eb",
             )
+            self.thinking_frame.configure(width=280)
+            self.thinking_frame.grid_propagate(False)
             self.thinking_frame.grid()  # Show the panel
             self._append_message("system", "💭 Gene's thinking panel VISIBLE\\n")
         else:
@@ -857,6 +874,8 @@ class LocalAIAgentApp(ctk.CTk):
                 hover_color="#2563eb",
             )
             self._refresh_history_list()
+            self.history_frame.configure(width=250)
+            self.history_frame.grid_propagate(False)
             self.history_frame.grid()  # Show the panel
         else:
             # OFF - hide history panel

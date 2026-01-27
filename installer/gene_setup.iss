@@ -41,8 +41,8 @@ PrivilegesRequiredOverridesAllowed=dialog
 
 ; Visual
 WizardStyle=modern
-WizardImageFile=wizard_large.bmp
-WizardSmallImageFile=wizard_small.bmp
+; WizardImageFile=wizard_large.bmp
+; WizardSmallImageFile=wizard_small.bmp
 
 ; License (optional - create a LICENSE.txt)
 ; LicenseFile=..\LICENSE
