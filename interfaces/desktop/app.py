@@ -145,13 +145,13 @@ class LocalAIAgentApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         
+        # Set window icon BEFORE window is realized (for title bar)
+        self._set_window_icon()
+        
         # Window setup
         self.title("Gene")
-        self.geometry("1200x750")  # Wider for thinking panel
-        self.minsize(800, 500)
-        
-        # Set window icon
-        self._set_window_icon()
+        self.geometry("2400x1500")  # Doubled size for better visibility
+        self.minsize(1600, 1000)
         
         # Ollama client
         self.client = OllamaClient()
@@ -234,19 +234,58 @@ class LocalAIAgentApp(ctk.CTk):
     
     def _set_window_icon(self):
         """Set the window icon from the Gene icon image."""
+        self.icon_loaded = False
         try:
+            # Try using the ICO file first (works better on Windows)
+            ico_path = os.path.join(os.path.dirname(__file__), "..", "..", "installer", "gene.ico")
+            if os.path.exists(ico_path):
+                # On Windows, use iconbitmap for .ico files
+                try:
+                    self.iconbitmap(default=ico_path)
+                    self.icon_loaded = True
+                    
+                    # Set app ID for taskbar - MUST be done before window is shown
+                    import ctypes
+                    myappid = 'gene.desktop.app.1.0'
+                    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+                    return
+                except Exception as e:
+                    print(f"ICO load error: {e}")
+            
+            # Fallback to PNG with transparent padding
             if os.path.exists(GENE_ICON_PATH):
                 # Load the icon image
                 icon_image = Image.open(GENE_ICON_PATH)
-                # Create PhotoImage for tkinter
-                self.icon_photo = ImageTk.PhotoImage(icon_image)
-                # Set as window icon
+                icon_image = icon_image.convert('RGBA')
+                
+                # For window icon, create square canvas with transparent padding
+                width, height = icon_image.size
+                canvas_size = max(width, height)
+                
+                # Create transparent canvas
+                icon_canvas = Image.new('RGBA', (canvas_size, canvas_size), (0, 0, 0, 0))
+                
+                # Center the image on the canvas
+                x_offset = (canvas_size - width) // 2
+                y_offset = (canvas_size - height) // 2
+                icon_canvas.paste(icon_image, (x_offset, y_offset))
+                
+                # Resize to standard icon sizes
+                icon_32 = icon_canvas.resize((32, 32), Image.Resampling.LANCZOS)
+                icon_64 = icon_canvas.resize((64, 64), Image.Resampling.LANCZOS)
+                
+                # Create PhotoImages
+                self.icon_photo = ImageTk.PhotoImage(icon_64)
+                self.icon_small = ImageTk.PhotoImage(icon_32)
+                
+                # Set as window icon (title bar)
                 self.iconphoto(True, self.icon_photo)
-                # Also try to set taskbar icon on Windows
+                self.icon_loaded = True
+                
+                # For Windows, set the app ID for taskbar grouping
                 try:
-                    # For Windows, create a small version for taskbar
-                    icon_small = icon_image.resize((32, 32), Image.Resampling.LANCZOS)
-                    self.icon_small = ImageTk.PhotoImage(icon_small)
+                    import ctypes
+                    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("gene.desktop.app.1.0")
                 except Exception:
                     pass
         except Exception as e:
@@ -284,43 +323,42 @@ class LocalAIAgentApp(ctk.CTk):
         # Header icon (if available) or fallback text
         header_col = 0
         icon_shown = False
-        if hasattr(self, 'icon_photo') and self.icon_photo:
-            try:
-                # Load and enhance image for better visibility
-                header_icon = Image.open(GENE_ICON_PATH)
-                
-                # Enhance contrast to make letters pop
-                enhancer = ImageEnhance.Contrast(header_icon)
-                header_icon = enhancer.enhance(1.5)  # Boost contrast 50%
-                
-                # Enhance color saturation
-                enhancer = ImageEnhance.Color(header_icon)
-                header_icon = enhancer.enhance(1.3)  # Boost saturation 30%
-                
-                # Sharpen the image
-                enhancer = ImageEnhance.Sharpness(header_icon)
-                header_icon = enhancer.enhance(2.0)  # Sharpen significantly
-                
-                # Resize to header size (80x40 - wider aspect)
-                header_icon = header_icon.resize((80, 40), Image.Resampling.LANCZOS)
-                
-                self.header_icon = ctk.CTkImage(header_icon, size=(80, 40))
-                icon_label = ctk.CTkLabel(header_frame, image=self.header_icon, text="")
-                icon_label.grid(row=0, column=0, sticky="w", padx=(0, 10))
-                header_col = 1
-                icon_shown = True
-            except Exception as e:
-                print(f"Icon load error: {e}")
-                pass
+        try:
+            # Always try to load the header icon
+            header_icon = Image.open(GENE_ICON_PATH)
+            
+            # Enhance contrast to make letters pop
+            enhancer = ImageEnhance.Contrast(header_icon)
+            header_icon = enhancer.enhance(1.5)  # Boost contrast 50%
+            
+            # Enhance color saturation
+            enhancer = ImageEnhance.Color(header_icon)
+            header_icon = enhancer.enhance(1.3)  # Boost saturation 30%
+            
+            # Sharpen the image
+            enhancer = ImageEnhance.Sharpness(header_icon)
+            header_icon = enhancer.enhance(2.0)  # Sharpen significantly
+            
+            # Resize to header size (80x40 - wider aspect)
+            header_icon = header_icon.resize((80, 40), Image.Resampling.LANCZOS)
+            
+            self.header_icon = ctk.CTkImage(header_icon, size=(80, 40))
+            icon_label = ctk.CTkLabel(header_frame, image=self.header_icon, text="")
+            icon_label.grid(row=0, column=0, sticky="w", padx=(0, 10))
+            header_col = 1
+            icon_shown = True
+        except Exception as e:
+            print(f"Icon load error: {e}")
         
-        # Title (with fallback icon if image didn't load)
-        title_text = "Gene" if icon_shown else f"{GENE_ICON} Gene"
-        title_label = ctk.CTkLabel(
-            header_frame,
-            text=title_text,
-            font=ctk.CTkFont(family="Arial", size=28, weight="bold"),
-        )
-        title_label.grid(row=0, column=header_col, sticky="w")
+        # Only show text label if icon didn't load (icon already shows "GENE")
+        if not icon_shown:
+            title_label = ctk.CTkLabel(
+                header_frame,
+                text=f"{GENE_ICON} Gene",
+                font=ctk.CTkFont(family="Arial", size=28, weight="bold"),
+            )
+            title_label.grid(row=0, column=header_col, sticky="w")
+            header_col += 1
         
         # Status
         status_text = "✅ Ollama Connected" if self.ollama_running else "❌ Ollama Not Running"
@@ -331,7 +369,7 @@ class LocalAIAgentApp(ctk.CTk):
             text_color=status_color,
             font=ctk.CTkFont(family="Arial", size=13, weight="bold"),
         )
-        self.status_label.grid(row=0, column=header_col + 1, sticky="e", padx=10)
+        self.status_label.grid(row=0, column=header_col, sticky="e", padx=10)
         
         # Model selector
         models = self._get_models() if self.ollama_running else [DEFAULT_MODEL]
@@ -343,7 +381,7 @@ class LocalAIAgentApp(ctk.CTk):
             command=self._on_model_change,
             width=180,
         )
-        self.model_dropdown.grid(row=0, column=header_col + 2, sticky="e")
+        self.model_dropdown.grid(row=0, column=header_col + 1, sticky="e")
         
         # ─────────────────────────────────────────────────────────────────────
         # Main Content Frame (History + Chat + Thinking Panel)
