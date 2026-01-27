@@ -203,6 +203,7 @@ class LocalAIAgentApp(ctk.CTk):
         self.recent_search_topics = []  # Keywords from recent searches
         self.last_search_results = []   # Store recent search result snippets
         self.search_context_active = False  # True after a search, until topic changes
+        self.pending_query_context = None  # Store context when waiting for location/info
         
         # Question starters that might indicate follow-up questions
         self.question_starters = [
@@ -1166,6 +1167,22 @@ class LocalAIAgentApp(ctk.CTk):
                 self._do_search(query, ask_ai=True)
             return
         
+        # Check if this is a location response to a pending query
+        if self.pending_query_context:
+            # Check if this looks like a location (city name, zip code, etc.)
+            msg_clean = message.strip().lower()
+            # Short response, likely providing requested info like city/location
+            if len(message.split()) <= 4 and not message.endswith('?'):
+                pending_context = self.pending_query_context
+                self.pending_query_context = None
+                
+                # Build search query with the provided location
+                search_query = f"{pending_context} {message}"
+                self._append_message("user", message)
+                self.conversation_history.append({"role": "user", "content": message})
+                self._do_search(search_query, ask_ai=True)
+                return
+        
         # Check for business commands
         if message.lower().startswith("/biz ") or message.lower().startswith("/business "):
             cmd = message.split(" ", 1)[1] if " " in message else ""
@@ -1178,6 +1195,21 @@ class LocalAIAgentApp(ctk.CTk):
             self._append_message("user", message)
             self._handle_business_query(message)
             return
+        
+        # Check if user is asking Gene to retry/try again - use pending context
+        if SEARCH_AVAILABLE and self.internet_enabled and self._is_retry_request(message):
+            if self.pending_query_context:
+                # User is frustrated Gene didn't search - do it now with context
+                self._append_message("user", message)
+                self.conversation_history.append({"role": "user", "content": message})
+                query = self.pending_query_context
+                if self.user_location:
+                    city = self.user_location['city']
+                    region = self.user_location.get('region', '')
+                    query = f"{query} {city} {region}".strip()
+                self._append_message("system", f"🔄 Retrying search with context: {query}\\n")
+                self._do_search(query, ask_ai=True)
+                return
         
         # Check if message suggests need for real-time info
         if SEARCH_AVAILABLE and self._needs_search(message):
@@ -1249,6 +1281,18 @@ class LocalAIAgentApp(ctk.CTk):
                     return True
         
         return False
+    
+    def _is_retry_request(self, message: str) -> bool:
+        """Check if user is asking Gene to retry/try again."""
+        message_lower = message.lower()
+        retry_phrases = [
+            "you aren't able", "you aren't able to", "aren't you able",
+            "can't you", "can you not", "why can't you", "why won't you",
+            "try again", "please try", "search again", "look again",
+            "retrieve that", "get that", "find that", "fetch that",
+            "you can't", "unable to", "not able to"
+        ]
+        return any(phrase in message_lower for phrase in retry_phrases)
     
     def _extract_search_query(self, message: str) -> str:
         """Extract a clean search query from natural language."""
@@ -1581,6 +1625,29 @@ class LocalAIAgentApp(ctk.CTk):
         self.chat_display.configure(state="disabled")
         self.chat_display.see("end")
         
+        # Check if Gene is asking for location - set pending context
+        response_lower = final_response.lower()
+        location_questions = ['city', 'zip code', 'location', 'area', 'where are you', 'which city']
+        if any(q in response_lower for q in location_questions) and '?' in final_response:
+            # Gene is asking for location, store context from last user message
+            if self.conversation_history:
+                for msg in reversed(self.conversation_history):
+                    if msg.get('role') == 'user':
+                        user_msg = msg.get('content', '').lower()
+                        # Extract the query type (weather, temperature, news, etc.)
+                        if any(kw in user_msg for kw in ['weather', 'temperature', 'forecast']):
+                            self.pending_query_context = "current weather temperature"
+                        elif any(kw in user_msg for kw in ['news', 'happening']):
+                            self.pending_query_context = "latest news"
+                        elif any(kw in user_msg for kw in ['restaurant', 'food', 'eat']):
+                            self.pending_query_context = "restaurants near"
+                        elif any(kw in user_msg for kw in ['store', 'shop', 'buy']):
+                            self.pending_query_context = "stores near"
+                        else:
+                            # Generic - use the keywords from user's message
+                            self.pending_query_context = user_msg[:50]
+                        break
+        
         # Store full response in history
         self.conversation_history.append({"role": "assistant", "content": response})
         
@@ -1766,21 +1833,123 @@ class LocalAIAgentApp(ctk.CTk):
         else:
             self._re_enable_inputs()
     
+    def _fetch_page_content(self, url: str, max_chars: int = 4000) -> str:
+        """Fetch and extract text content from a webpage."""
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            # Simple HTML to text extraction
+            html = response.text
+            
+            # Remove script and style elements
+            html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            html = re.sub(r'<nav[^>]*>.*?</nav>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            html = re.sub(r'<footer[^>]*>.*?</footer>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            html = re.sub(r'<header[^>]*>.*?</header>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            
+            # Remove HTML tags
+            text = re.sub(r'<[^>]+>', ' ', html)
+            
+            # Decode HTML entities
+            text = text.replace('&nbsp;', ' ').replace('&amp;', '&')
+            text = text.replace('&lt;', '<').replace('&gt;', '>')
+            text = text.replace('&quot;', '"').replace('&#39;', "'")
+            text = re.sub(r'&#\d+;', '', text)
+            text = re.sub(r'&\w+;', '', text)
+            
+            # Clean up whitespace
+            text = re.sub(r'\s+', ' ', text).strip()
+            
+            # Truncate to max chars
+            if len(text) > max_chars:
+                text = text[:max_chars] + "..."
+            
+            return text
+        except Exception as e:
+            return f"[Could not fetch page: {e}]"
+
     def _analyze_search_results(self, query: str, results: list):
         """Have AI analyze search results."""
         # Build context from search results
         context = f"Web search results for '{query}':\n\n"
+        
+        # Check if this is a query that needs real-time data (weather, prices, etc.)
+        query_lower = query.lower()
+        is_weather_query = any(kw in query_lower for kw in ['weather', 'temperature', 'forecast'])
+        needs_page_fetch = any(kw in query_lower for kw in [
+            'weather', 'temperature', 'forecast', 'price', 'stock', 
+            'score', 'result', 'news', 'latest', 'current', 'today'
+        ])
+        
+        # Sites to skip for page fetching (too generic or don't have current data)
+        skip_sites = ['wikipedia.org', 'experthelp.com', 'quora.com', 'reddit.com']
+        # Preferred sites for weather
+        weather_sites = ['weather.gc.ca', 'theweathernetwork.com', 'weather.com', 
+                        'accuweather.com', 'cbc.ca', 'ctvnews.ca', 'globalnews.ca']
+        
+        page_fetched = False
+        best_url_to_fetch = None
+        
+        # Find the best URL to fetch for weather queries
+        if needs_page_fetch and is_weather_query:
+            # First look for preferred weather/news sites
+            for r in results:
+                url = r.get('href', '')
+                if any(site in url for site in weather_sites):
+                    best_url_to_fetch = url
+                    break
+            # Fallback: first non-skipped URL
+            if not best_url_to_fetch:
+                for r in results:
+                    url = r.get('href', '')
+                    if url and not any(skip in url for skip in skip_sites):
+                        best_url_to_fetch = url
+                        break
+        
         for i, r in enumerate(results, 1):
-            context += f"{i}. {r.get('title', '')}\n{r.get('body', '')}\n\n"
+            title = r.get('title', '')
+            body = r.get('body', '')
+            url = r.get('href', '')
+            
+            context += f"{i}. {title}\n{body}\nURL: {url}\n"
+            
+            # Fetch the best URL we identified (not just the first one)
+            if needs_page_fetch and not page_fetched and url == best_url_to_fetch:
+                self._append_message("system", f"📄 Fetching live data from {url[:60]}...\n")
+                page_content = self._fetch_page_content(url)
+                if page_content and not page_content.startswith("[Could not"):
+                    context += f"\n--- Page Content ---\n{page_content}\n--- End Page Content ---\n"
+                page_fetched = True
+            
+            context += "\n"
+        
+        # Build a more explicit prompt for the LLM
+        if is_weather_query:
+            instruction = (
+                "Based on these search results, provide the current weather information. "
+                "IMPORTANT: The search result snippets contain temperature data - extract and report it. "
+                "Look for temperatures in °C or °F mentioned in the results above. "
+                "Be specific - state the actual temperature numbers found in the results."
+            )
+        else:
+            instruction = (
+                "Based on these search results and page content, please answer the user's question directly. "
+                "Extract specific data like temperatures, prices, scores, etc. if available in the results."
+            )
         
         # Add to conversation
         self.conversation_history.append({
             "role": "user",
-            "content": f"[Web Search: {query}]\n\n{context}\n\nPlease summarize these search results and provide key insights."
+            "content": f"[Web Search: {query}]\n\n{context}\n\n{instruction}"
         })
         
         # Generate AI response
-        thread = threading.Thread(target=self._generate_response, args=(f"Summarize search results for: {query}",))
+        thread = threading.Thread(target=self._generate_response, args=(f"Answer based on search for: {query}",))
         thread.daemon = True
         thread.start()
     
