@@ -325,7 +325,9 @@ class LocalAIAgentApp(ctk.CTk):
         
         # Configure grid - main window has header, content area, and input
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=0)  # Header - fixed height
+        self.grid_rowconfigure(1, weight=1)  # Content - expands
+        self.grid_rowconfigure(2, weight=0)  # Input - fixed height
         
         # ─────────────────────────────────────────────────────────────────────
         # Header Frame
@@ -353,10 +355,11 @@ class LocalAIAgentApp(ctk.CTk):
             enhancer = ImageEnhance.Sharpness(header_icon)
             header_icon = enhancer.enhance(2.0)  # Sharpen significantly
             
-            # Resize to header size (80x40 - wider aspect)
-            header_icon = header_icon.resize((80, 40), Image.Resampling.LANCZOS)
+            # Resize to header size - maintain square aspect ratio
+            header_size = 48  # Square icon for header
+            header_icon = header_icon.resize((header_size, header_size), Image.Resampling.LANCZOS)
             
-            self.header_icon = ctk.CTkImage(header_icon, size=(80, 40))
+            self.header_icon = ctk.CTkImage(header_icon, size=(header_size, header_size))
             icon_label = ctk.CTkLabel(header_frame, image=self.header_icon, text="")
             icon_label.grid(row=0, column=0, sticky="w", padx=(0, 10))
             header_col = 1
