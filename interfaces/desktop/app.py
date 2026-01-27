@@ -65,7 +65,7 @@ The thinking section should show your reasoning process. The final response shou
 
 # Gene robot icon - hexagonal robot head using GENE letters
 GENE_ICON = "<G>"  # Text fallback if image not found
-GENE_ICON_PATH = os.path.join(os.path.dirname(__file__), "assets", "Gene  Icon.png")
+GENE_ICON_PATH = os.path.join(os.path.dirname(__file__), "assets", "gene_icon.png")
 
 # History storage directory
 HISTORY_DIR = os.path.join(os.path.dirname(__file__), "chat_history")
@@ -145,27 +145,40 @@ class LocalAIAgentApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         
-        # Set window icon BEFORE window is realized (for title bar)
-        self._set_window_icon()
+        # CRITICAL: Set Windows app ID FIRST for correct taskbar icon
+        self._set_windows_app_id()
         
-        # Window setup
+        # Window title
         self.title("Gene")
         
-        # Get screen dimensions for responsive sizing
+        # Get screen dimensions
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         
-        # Start at 80% of screen size, capped at reasonable maximums
+        # Start at 80% of screen, capped at maximums
         start_width = min(int(screen_width * 0.8), 1600)
         start_height = min(int(screen_height * 0.8), 1000)
         
-        # Center the window on screen
+        # Ensure minimum reasonable values
+        start_width = max(start_width, 1000)
+        start_height = max(start_height, 700)
+        
+        # Center on screen
         x_pos = (screen_width - start_width) // 2
         y_pos = (screen_height - start_height) // 2
         
+        # Apply geometry
         self.geometry(f"{start_width}x{start_height}+{x_pos}+{y_pos}")
-        self.minsize(800, 600)  # Reasonable minimum for usability
-        self.resizable(True, True)  # Explicitly enable resizing
+        self.minsize(800, 600)
+        
+        # CRITICAL: Ensure both width and height are resizable
+        self.resizable(width=True, height=True)
+        
+        # Force window to realize before setting icon
+        self.update_idletasks()
+        
+        # Set window icon
+        self._set_window_icon()
         
         # Ollama client
         self.client = OllamaClient()
@@ -247,62 +260,46 @@ class LocalAIAgentApp(ctk.CTk):
         # Focus on input
         self.input_field.focus()
     
-    def _set_window_icon(self):
-        """Set the window icon from the Gene icon image."""
-        self.icon_loaded = False
+    def _set_windows_app_id(self):
+        """Set Windows AppUserModelID for proper taskbar icon grouping.
+        
+        MUST be called before any window content is created.
+        """
         try:
-            # Try using the ICO file first (works better on Windows)
-            ico_path = os.path.join(os.path.dirname(__file__), "..", "..", "installer", "gene.ico")
+            import ctypes
+            # Unique app ID for Gene
+            app_id = 'PlumbMonkey.Gene.DesktopApp.1.0'
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        except Exception:
+            pass  # Non-Windows or failed, not critical
+    
+    def _set_window_icon(self):
+        """Set the window icon for title bar and taskbar."""
+        self.icon_loaded = False
+        
+        # Get absolute path to ICO file
+        ico_path = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "..", "installer", "gene.ico")
+        )
+        
+        try:
             if os.path.exists(ico_path):
-                # On Windows, use iconbitmap for .ico files
-                try:
-                    self.iconbitmap(default=ico_path)
-                    self.icon_loaded = True
-                    
-                    # Set app ID for taskbar - MUST be done before window is shown
-                    import ctypes
-                    myappid = 'gene.desktop.app.1.0'
-                    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-                    return
-                except Exception as e:
-                    print(f"ICO load error: {e}")
+                # Use iconbitmap for Windows .ico files (best taskbar support)
+                self.iconbitmap(default=ico_path)
+                self.icon_loaded = True
+                return
             
-            # Fallback to PNG with transparent padding
+            # Fallback to PNG if ICO not found
             if os.path.exists(GENE_ICON_PATH):
-                # Load the icon image
                 icon_image = Image.open(GENE_ICON_PATH)
                 icon_image = icon_image.convert('RGBA')
                 
-                # For window icon, create square canvas with transparent padding
-                width, height = icon_image.size
-                canvas_size = max(width, height)
-                
-                # Create transparent canvas
-                icon_canvas = Image.new('RGBA', (canvas_size, canvas_size), (0, 0, 0, 0))
-                
-                # Center the image on the canvas
-                x_offset = (canvas_size - width) // 2
-                y_offset = (canvas_size - height) // 2
-                icon_canvas.paste(icon_image, (x_offset, y_offset))
-                
-                # Resize to standard icon sizes
-                icon_32 = icon_canvas.resize((32, 32), Image.Resampling.LANCZOS)
-                icon_64 = icon_canvas.resize((64, 64), Image.Resampling.LANCZOS)
-                
-                # Create PhotoImages
-                self.icon_photo = ImageTk.PhotoImage(icon_64)
-                self.icon_small = ImageTk.PhotoImage(icon_32)
-                
-                # Set as window icon (title bar)
+                # Resize to standard icon size
+                icon_image = icon_image.resize((64, 64), Image.Resampling.LANCZOS)
+                self.icon_photo = ImageTk.PhotoImage(icon_image)
                 self.iconphoto(True, self.icon_photo)
                 self.icon_loaded = True
                 
-                # For Windows, set the app ID for taskbar grouping
-                try:
-                    import ctypes
-                    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("gene.desktop.app.1.0")
-                except Exception:
-                    pass
         except Exception as e:
             print(f"Note: Could not load icon: {e}")
     

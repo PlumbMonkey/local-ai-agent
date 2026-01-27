@@ -21,14 +21,14 @@ Convert the Gene icon PNG to ICO format:
 
 ### Option 1: Online Converter
 1. Go to https://convertio.co/png-ico/
-2. Upload `interfaces/desktop/assets/Gene  Icon.png`
+2. Upload `interfaces/desktop/assets/gene_icon.png`
 3. Convert and download as `gene.ico`
 4. Place in this `installer/` folder
 
 ### Option 2: Using Python
 ```python
 from PIL import Image
-img = Image.open('interfaces/desktop/assets/Gene  Icon.png')
+img = Image.open('interfaces/desktop/assets/gene_icon.png')
 img.save('installer/gene.ico', format='ICO', sizes=[(256,256), (128,128), (64,64), (48,48), (32,32), (16,16)])
 ```
 
